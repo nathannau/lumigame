@@ -1,0 +1,78 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/linucs/vscode-blockly/refs/heads/main/src/catalog/block-catalog_v1.schema.json
+id: lumigame-buttons
+author: Nathan
+version: "1"
+category: LumiGame::Boutons
+description:
+  en: Reading the 32-button grid of the LumiGame console.
+  fr: Lecture de la grille de 32 boutons de la console LumiGame.
+implementations:
+  - runtime: arduino:cpp
+    blocks:
+      - blockly:
+          type: lumigame_buttons_state
+          message0:
+            en: all buttons state
+            fr: état de tous les boutons
+          args0: []
+          output: Number
+          tooltip:
+            en: The 32 button states as a single bitmask (bit = row * 8 + column), refreshed once per loop() iteration.
+            fr: L'état des 32 boutons sous forme d'un seul masque de bits (bit = ligne * 8 + colonne), rafraîchi une fois par tour de loop().
+        codegen:
+          body:
+            - getButtonsState()
+          imports:
+            - "#include \"lumigame.h\""
+          precedence: ATOMIC
+      - blockly:
+          type: lumigame_button_state
+          message0:
+            en: button at %1 is %2
+            fr: le bouton à %1 est %2
+          args0:
+            - type: input_value
+              name: POSITION
+              check:
+                - Position
+                - Number
+            - type: field_dropdown
+              name: STATE
+              options:
+                - ["appuyé", "true"]
+                - ["relâché", "false"]
+          output: Boolean
+          inputsInline: true
+          tooltip:
+            en: Whether the button at the given position is currently in the selected state (pressed/released).
+            fr: Indique si le bouton à la position donnée est actuellement dans l'état choisi (appuyé/relâché).
+        codegen:
+          body:
+            - (getButtonState({{POSITION}}) == {{STATE}})
+          imports:
+            - "#include \"lumigame.h\""
+          precedence: ATOMIC
+      - blockly:
+          type: lumigame_for_each_button
+          message0:
+            en: for each button, position %1 %2
+            fr: pour chaque bouton, position %1 %2
+          args0:
+            - type: field_variable
+              name: VAR
+              variable: position
+              defaultType: ""
+            - type: input_statement
+              name: DO
+          previousStatement: null
+          nextStatement: null
+          tooltip:
+            en: Repeats the enclosed blocks once for every button position (0-31), making the current position available as a variable.
+            fr: Répète les blocs contenus une fois pour chaque position de bouton (0-31), la position courante étant disponible via une variable.
+        codegen:
+          body:
+            - |
+              for (uint8_t {{VAR}} = 0; {{VAR}} < NUM_BUTTONS; {{VAR}}++) {
+              {{DO}}}
+          imports:
+            - "#include \"lumigame.h\""

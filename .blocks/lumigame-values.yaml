@@ -1,0 +1,287 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/linucs/vscode-blockly/refs/heads/main/src/catalog/block-catalog_v1.schema.json
+id: lumigame-values
+author: Nathan
+version: "1"
+category: LumiGame::Position et couleur
+description:
+  en: Position, zone, and colour value builders shared by the button and LED blocks.
+  fr: Constructeurs de valeurs position, zone et couleur, partagés par les blocs boutons et LED.
+implementations:
+  - runtime: arduino:cpp
+    blocks:
+      - blockly:
+          type: lumigame_position
+          message0:
+            en: row %1 column %2
+            fr: ligne %1 colonne %2
+          args0:
+            - type: input_value
+              name: ROW
+              check: Number
+            - type: input_value
+              name: COL
+              check: Number
+          output: Position
+          inputsInline: true
+          tooltip:
+            en: A button/LED position (row 0-3, column 0-7), packed as a single value for the other LumiGame blocks.
+            fr: Une position de bouton/LED (ligne 0-3, colonne 0-7), encodée en une seule valeur pour les autres blocs LumiGame.
+        codegen:
+          body:
+            - (((uint8_t)({{ROW}}) * NUM_COLS) + (uint8_t)({{COL}}))
+          imports:
+            - "#include \"lumigame.h\""
+          precedence: ATOMIC
+          inputDefaults:
+            ROW: "0"
+            COL: "0"
+      - blockly:
+          type: lumigame_position_add
+          message0:
+            en: position %1 + position %2
+            fr: position %1 + position %2
+          args0:
+            - type: input_value
+              name: A
+              check:
+                - Position
+                - Number
+            - type: input_value
+              name: B
+              check:
+                - Position
+                - Number
+          output: Position
+          inputsInline: true
+          tooltip:
+            en: Adds two positions. The row and column each wrap independently (modulo), so the result always stays inside the 4x8 grid.
+            fr: Additionne deux positions. La ligne et la colonne s'enroulent chacune indépendamment (modulo), pour que le résultat reste toujours dans la grille 4x8.
+        codegen:
+          body:
+            - lumigamePositionAdd({{A}}, {{B}})
+          imports:
+            - "#include \"lumigame.h\""
+          precedence: ATOMIC
+      - blockly:
+          type: lumigame_zone
+          message0:
+            en: zone %1
+            fr: zone %1
+          args0:
+            - type: field_bitmap
+              name: BITMAP
+              width: 8
+              height: 4
+              value:
+                - - 0
+                  - 0
+                  - 0
+                  - 0
+                  - 0
+                  - 0
+                  - 0
+                  - 0
+                - - 0
+                  - 0
+                  - 0
+                  - 0
+                  - 0
+                  - 0
+                  - 0
+                  - 0
+                - - 0
+                  - 0
+                  - 0
+                  - 0
+                  - 0
+                  - 0
+                  - 0
+                  - 0
+                - - 0
+                  - 0
+                  - 0
+                  - 0
+                  - 0
+                  - 0
+                  - 0
+                  - 0
+          output: Zone
+          tooltip:
+            en: "A zone: a subset of the 32 button positions, picked by clicking cells in the 4x8 grid. Stored as one bit per position."
+            fr: "Une zone : un sous-ensemble des 32 positions de boutons, choisi en cliquant des cases de la grille 4x8. Stockée avec un bit par position."
+        codegen:
+          body:
+            - lumigameZoneMask({ {{BITMAP}} })
+          imports:
+            - "#include \"lumigame.h\""
+          precedence: ATOMIC
+      - blockly:
+          type: lumigame_position_in_zone
+          message0:
+            en: position %1 is in zone %2
+            fr: la position %1 est dans la zone %2
+          args0:
+            - type: input_value
+              name: POSITION
+              check:
+                - Position
+                - Number
+            - type: input_value
+              name: ZONE
+              check: Zone
+          output: Boolean
+          inputsInline: true
+          tooltip:
+            en: Whether the given position belongs to the given zone.
+            fr: Indique si la position donnée fait partie de la zone donnée.
+        codegen:
+          body:
+            - lumigamePositionInZone({{POSITION}}, {{ZONE}})
+          imports:
+            - "#include \"lumigame.h\""
+          precedence: ATOMIC
+      - blockly:
+          type: lumigame_for_each_button_in_zone
+          message0:
+            en: for each position in zone %1, position %2 %3
+            fr: pour chaque position dans la zone %1, position %2 %3
+          args0:
+            - type: field_variable
+              name: VAR
+              variable: position
+              defaultType: ""
+            - type: input_value
+              name: ZONE
+              check: Zone
+            - type: input_statement
+              name: DO
+          previousStatement: null
+          nextStatement: null
+          tooltip:
+            en: Repeats the enclosed blocks once for every button position (0-31) that belongs to the given zone, making the current position available as a variable.
+            fr: Répète les blocs contenus une fois pour chaque position de bouton (0-31) qui fait partie de la zone donnée, la position courante étant disponible via une variable.
+        codegen:
+          body:
+            - |
+              {
+                uint32_t zone = {{ZONE}};
+                for (uint8_t {{VAR}} = 0; {{VAR}} < NUM_BUTTONS; {{VAR}}++) {
+                  if (!lumigamePositionInZone({{VAR}}, zone)) continue;
+              {{DO}}  }
+              }
+          imports:
+            - "#include \"lumigame.h\""
+      - blockly:
+          type: lumigame_random_position
+          message0:
+            en: choose a random position %1
+            fr: choisir une position au hasard %1
+          args0:
+            - type: field_variable
+              name: VAR
+              variable: position
+              defaultType: ""
+          message1:
+            en: valid if %1
+            fr: valide si %1
+          args1:
+            - type: input_statement
+              name: VALID
+          message2:
+            en: if found %1
+            fr: si trouvée %1
+          args2:
+            - type: input_statement
+              name: FOUND
+          message3:
+            en: if none found %1
+            fr: si aucune trouvée %1
+          args3:
+            - type: input_statement
+              name: NONE
+          previousStatement: null
+          nextStatement: null
+          tooltip:
+            en: Tries every button position in random order, exposing each candidate as a variable. 'valid if' decides whether to keep it - it's valid by default, unless a 'return' block inside sets it to false (e.g. to require an unlit LED). The first valid candidate runs 'if found'; if none of the 32 positions are valid, 'if none found' runs instead.
+            fr: Essaie toutes les positions de bouton dans un ordre aléatoire, en exposant chaque candidate via une variable. « valide si » décide si elle est retenue - elle est valide par défaut, sauf si un bloc « retourner » à l'intérieur la met à false (par ex. pour exiger une LED éteinte). La première position valide déclenche « si trouvée » ; si aucune des 32 positions n'est valide, c'est « si aucune trouvée » qui s'exécute.
+        codegen:
+          body:
+            - |
+              {
+                uint8_t candidates[NUM_BUTTONS];
+                shuffledPositions(candidates);
+                bool found = false;
+                for (uint8_t idx = 0; idx < NUM_BUTTONS && !found; idx++) {
+                  uint8_t {{VAR}} = candidates[idx];
+                  bool valid = [&]() -> bool {
+              {{VALID}}      return true;
+                  }();
+                  if (valid) {
+                    found = true;
+              {{FOUND}}    }
+                }
+                if (!found) {
+              {{NONE}}  }
+              }
+          imports:
+            - "#include \"lumigame.h\""
+      - blockly:
+          type: lumigame_colour_rgb
+          message0:
+            en: colour red %1 green %2 blue %3
+            fr: couleur rouge %1 vert %2 bleu %3
+          args0:
+            - type: input_value
+              name: R
+              check: Number
+            - type: input_value
+              name: G
+              check: Number
+            - type: input_value
+              name: B
+              check: Number
+          output: Colour
+          inputsInline: true
+          tooltip:
+            en: An RGB colour (0-255 per channel) for the LumiGame LED blocks.
+            fr: Une couleur RGB (0-255 par canal) pour les blocs LED de LumiGame.
+        codegen:
+          body:
+            - CRGB({{R}}, {{G}}, {{B}})
+          imports:
+            - "#include \"lumigame.h\""
+          precedence: ATOMIC
+          inputDefaults:
+            R: "0"
+            G: "0"
+            B: "0"
+      - blockly:
+          type: lumigame_colour_hsv
+          message0:
+            en: colour hue %1 saturation %2 value %3
+            fr: couleur teinte %1 saturation %2 valeur %3
+          args0:
+            - type: input_value
+              name: H
+              check: Number
+            - type: input_value
+              name: S
+              check: Number
+            - type: input_value
+              name: V
+              check: Number
+          output: Colour
+          inputsInline: true
+          tooltip:
+            en: A colour from hue/saturation/value (0-255 each) for the LumiGame LED blocks.
+            fr: Une couleur définie par teinte/saturation/valeur (0-255 chacune) pour les blocs LED de LumiGame.
+        codegen:
+          body:
+            - CRGB(CHSV({{H}}, {{S}}, {{V}}))
+          imports:
+            - "#include \"lumigame.h\""
+          precedence: ATOMIC
+          inputDefaults:
+            H: "0"
+            S: "255"
+            V: "255"

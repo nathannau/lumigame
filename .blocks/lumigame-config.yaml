@@ -1,0 +1,94 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/linucs/vscode-blockly/refs/heads/main/src/catalog/block-catalog_v1.schema.json
+id: lumigame-configuration
+author: Nathan
+version: "1"
+category: LumiGame::Configuration
+description:
+  en: Core setup and game/menu dispatch for the LumiGame console.
+  fr: Initialisation et répartition jeu/menu pour la console LumiGame.
+implementations:
+  - runtime: arduino:cpp
+    blocks:
+      - blockly:
+          type: lumigame_configuration
+          message0:
+            en: LumiGame configuration %1
+            fr: Configuration LumiGame %1
+          args0:
+            - type: input_statement
+              name: GAMES
+          tooltip:
+            en: "Initializes I2C and the two TCA9555 button expanders, then registers each 'add game' block placed inside. Also drives loop(): runs the current game if one is active, otherwise the menu. Place once on the canvas."
+            fr: "Initialise l'I2C et les deux extenseurs de boutons TCA9555, puis enregistre chaque bloc \"ajouter le jeu\" placé à l'intérieur. Pilote aussi loop() : exécute le jeu en cours s'il y en a un, sinon le menu. À placer une seule fois sur le canevas."
+        codegen:
+          body:
+            - lumigameLoop();
+          imports:
+            - "#include \"lumigame.h\""
+          setup:
+            - lumigameInit();
+            - "{{GAMES}}"
+      - blockly:
+          type: lumigame_add_game
+          message0:
+            en: add game %1
+            fr: ajouter le jeu %1
+          args0:
+            - type: field_input
+              name: ID
+              text: jeu1
+          previousStatement: null
+          nextStatement: null
+          tooltip:
+            en: Registers a game. Its file must define <id>_start(), <id>_loop() and <id>_stop() functions (e.g. with 'to do' function blocks). <id>_loop() must return non-zero when the game is over, to return to the menu. Place inside the LumiGame configuration block.
+            fr: Enregistre un jeu. Le fichier du jeu doit définir les fonctions <id>_start(), <id>_loop() et <id>_stop() (par ex. avec des blocs de fonction "à faire"). <id>_loop() doit retourner une valeur non nulle quand la partie est terminée, pour revenir au menu. À placer dans le bloc de configuration LumiGame.
+        codegen:
+          body:
+            - addGame({{ID}}_start, {{ID}}_loop, {{ID}}_stop);
+          declarations:
+            - |
+              extern void {{ID}}_start();
+              extern uint8_t {{ID}}_loop();
+              extern void {{ID}}_stop();
+      - blockly:
+          type: lumigame_game
+          message0:
+            en: game %1
+            fr: jeu %1
+          args0:
+            - type: field_input
+              name: NAME
+              text: jeu1
+          message1:
+            en: start %1
+            fr: début %1
+          args1:
+            - type: input_statement
+              name: START
+          message2:
+            en: loop (return non-zero when the game is over) %1
+            fr: boucle (retourner une valeur non nulle quand la partie est terminée) %1
+          args2:
+            - type: input_statement
+              name: LOOP
+          message3:
+            en: stop %1
+            fr: fin %1
+          args3:
+            - type: input_statement
+              name: STOP
+          tooltip:
+            en: "Defines a complete game: generates <name>_start(), <name>_loop() and <name>_stop(). Place once per secondary .blk file (see the 'Secondary file' toggle), then register the same name with the 'add game' block in the LumiGame configuration."
+            fr: "Définit un jeu complet : génère <name>_start(), <name>_loop() et <name>_stop(). À placer une seule fois par fichier .blk secondaire (voir la case « Secondary file »), puis à enregistrer avec le même nom via le bloc « ajouter le jeu » dans la configuration LumiGame."
+        codegen:
+          helpers:
+            game_start: |
+              void {{NAME}}_start() {
+              {{START}}}
+            game_loop: |
+              uint8_t {{NAME}}_loop() {
+              {{LOOP}}  return 0;
+              }
+            game_stop: |
+              void {{NAME}}_stop() {
+              {{STOP}}}

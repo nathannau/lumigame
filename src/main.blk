@@ -1,0 +1,32 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lumigame_configuration",
+        "id": "{8)geq3_U,{A7?t}+A]W",
+        "x": 288,
+        "y": 119,
+        "inputs": {
+          "GAMES": {
+            "block": {
+              "type": "lumigame_add_game",
+              "id": "Is-Km3X}9YwL6p/(b?6E",
+              "fields": {
+                "ID": "jeu1"
+              }
+            }
+          }
+        }
+      }
+    ]
+  },
+  "variables": [
+    {
+      "name": "position",
+      "id": "(2%%*)LagpnXuE~I#^kA"
+    }
+  ],
+  "backpack": [],
+  "secondaryFile": false
+}

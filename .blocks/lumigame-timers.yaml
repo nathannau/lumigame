@@ -1,0 +1,55 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/linucs/vscode-blockly/refs/heads/main/src/catalog/block-catalog_v1.schema.json
+id: lumigame-timers
+author: Nathan
+version: "1"
+category: LumiGame::Minuteurs
+description:
+  en: Named countdown timers for the LumiGame console.
+  fr: Minuteurs nommés pour la console LumiGame.
+implementations:
+  - runtime: arduino:cpp
+    blocks:
+      - blockly:
+          type: lumigame_timer_set
+          message0:
+            en: start timer %1 for %2 ms
+            fr: démarrer le minuteur %1 pendant %2 ms
+          args0:
+            - type: field_input
+              name: NAME
+              text: timer1
+            - type: input_value
+              name: MS
+              check: Number
+          inputsInline: true
+          previousStatement: null
+          nextStatement: null
+          tooltip:
+            en: "(Re)starts the named timer so it expires the given number of milliseconds from now. Timers are identified by name, so several independent timers can run at once."
+            fr: "(Re)démarre le minuteur nommé pour qu'il expire dans le nombre de millisecondes donné. Les minuteurs sont identifiés par leur nom, donc plusieurs minuteurs indépendants peuvent tourner en même temps."
+        codegen:
+          body:
+            - lumigameTimerSet("{{NAME}}", {{MS}});
+          imports:
+            - "#include \"lumigame.h\""
+          inputDefaults:
+            MS: "1000"
+      - blockly:
+          type: lumigame_timer_expired
+          message0:
+            en: timer %1 expired?
+            fr: le minuteur %1 est-il expiré ?
+          args0:
+            - type: field_input
+              name: NAME
+              text: timer1
+          output: Boolean
+          tooltip:
+            en: "Whether the named timer's delay has elapsed. Also true if that timer was never started, so a first check can kick off a 'set timer, then act' cycle on its own."
+            fr: "Indique si le délai du minuteur nommé est écoulé. Vrai aussi si ce minuteur n'a jamais été démarré, pour qu'un premier test puisse lancer tout seul un cycle « démarrer le minuteur, puis agir »."
+        codegen:
+          body:
+            - lumigameTimerExpired("{{NAME}}")
+          imports:
+            - "#include \"lumigame.h\""
+          precedence: ATOMIC

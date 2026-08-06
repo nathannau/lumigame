@@ -1,0 +1,118 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/linucs/vscode-blockly/refs/heads/main/src/catalog/block-catalog_v1.schema.json
+id: lumigame-leds
+author: Nathan
+version: "1"
+category: LumiGame::LED
+description:
+  en: Driving the 32-LED grid of the LumiGame console.
+  fr: Pilotage de la grille de 32 LED de la console LumiGame.
+implementations:
+  - runtime: arduino:cpp
+    blocks:
+      - blockly:
+          type: lumigame_leds_set_all
+          message0:
+            en: set all LEDs to %1
+            fr: mettre toutes les LED en %1
+          args0:
+            - type: input_value
+              name: COLOR
+              check: Colour
+          inputsInline: true
+          previousStatement: null
+          nextStatement: null
+          tooltip:
+            en: "Set every one of the 32 LEDs to the same colour. Takes effect on the next loop() iteration."
+            fr: "Met les 32 LED à la même couleur. Prend effet au prochain tour de loop()."
+        codegen:
+          body:
+            - setAllLeds({{COLOR}});
+          imports:
+            - "#include \"lumigame.h\""
+      - blockly:
+          type: lumigame_led_set_color
+          message0:
+            en: set LED at %1 to %2
+            fr: définir la LED à %1 en %2
+          args0:
+            - type: input_value
+              name: POSITION
+              check:
+                - Position
+                - Number
+            - type: input_value
+              name: COLOR
+              check: Colour
+          inputsInline: true
+          previousStatement: null
+          nextStatement: null
+          tooltip:
+            en: "Set the LED at the given position to a colour. Takes effect on the next loop() iteration."
+            fr: "Définit la couleur de la LED à la position donnée. Prend effet au prochain tour de loop()."
+        codegen:
+          body:
+            - setLedColor({{POSITION}}, {{COLOR}});
+          imports:
+            - "#include \"lumigame.h\""
+      - blockly:
+          type: lumigame_scroll_text
+          message0:
+            en: display text %1 colour %2 speed %3 ms
+            fr: afficher le texte %1 couleur %2 vitesse %3 ms
+          args0:
+            - type: input_value
+              name: TEXT
+              check: String
+            - type: input_value
+              name: COLOR
+              check: Colour
+            - type: input_value
+              name: SPEED
+              check: Number
+          inputsInline: true
+          previousStatement: null
+          nextStatement: null
+          tooltip:
+            en: "Scrolls the text across the LED grid, in the given colour, one column every given number of milliseconds. Call this every loop() iteration (e.g. with the same text) to keep it animating - it tracks its own position over time and loops back to the start once it has scrolled fully off-screen."
+            fr: "Fait défiler le texte sur la grille de LED, dans la couleur donnée, une colonne toutes les X millisecondes. Appelle ce bloc à chaque tour de loop() (avec le même texte) pour que le défilement continue - il garde sa position en mémoire et recommence depuis le début une fois sorti complètement de l'écran."
+        codegen:
+          body:
+            - lumigameScrollText({{TEXT}}, {{COLOR}}, {{SPEED}});
+          imports:
+            - "#include \"lumigame.h\""
+          inputDefaults:
+            TEXT: "\"\""
+            COLOR: "CRGB(255, 255, 255)"
+            SPEED: "300"
+      - blockly:
+          type: lumigame_stop_scroll_text
+          message0:
+            en: stop displaying text
+            fr: interrompre l'affichage du texte
+          args0: []
+          previousStatement: null
+          nextStatement: null
+          tooltip:
+            en: "Stops any text currently scrolling and clears the LED grid immediately."
+            fr: "Interrompt le défilement de texte en cours et éteint immédiatement la grille de LED."
+        codegen:
+          body:
+            - lumigameStopScrollText();
+          imports:
+            - "#include \"lumigame.h\""
+      - blockly:
+          type: lumigame_is_scrolling_text
+          message0:
+            en: text is displaying?
+            fr: un texte est-il en cours d'affichage ?
+          args0: []
+          output: Boolean
+          tooltip:
+            en: "Whether a text is currently being displayed/scrolled on the LED grid."
+            fr: "Indique si un texte est actuellement affiché/en train de défiler sur la grille de LED."
+        codegen:
+          body:
+            - lumigameIsScrollingText()
+          imports:
+            - "#include \"lumigame.h\""
+          precedence: ATOMIC

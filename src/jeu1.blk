@@ -1,0 +1,140 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lumigame_game",
+        "id": "@5_.=X9oxC5mywLMYJYy",
+        "x": 179,
+        "y": 4,
+        "fields": {
+          "NAME": "jeu1"
+        },
+        "inputs": {
+          "START": {
+            "block": {
+              "type": "lumigame_leds_set_all",
+              "id": "u?/lbWkmpm-Z68.uWiU$"
+            }
+          }
+        }
+      },
+      {
+        "type": "lumigame_game",
+        "id": "O_k*3=$:ify1PFq`@H5S",
+        "x": 197,
+        "y": 186,
+        "fields": {
+          "NAME": "jeu1"
+        },
+        "inputs": {
+          "LOOP": {
+            "block": {
+              "type": "lumigame_for_each_button",
+              "id": "9qC*W2WeGf.no|ruN;l8",
+              "fields": {
+                "VAR": {
+                  "id": "BBL%iV;2e$8(U3nf4[./"
+                }
+              },
+              "inputs": {
+                "DO": {
+                  "block": {
+                    "type": "controls_if",
+                    "id": "cfpq=PlVbRZorb,Jh/*J",
+                    "inputs": {
+                      "IF0": {
+                        "block": {
+                          "type": "lumigame_button_state",
+                          "id": "7pt=lTwH/m99V_!!l=*m",
+                          "fields": {
+                            "STATE": "true"
+                          },
+                          "inputs": {
+                            "POSITION": {
+                              "block": {
+                                "type": "variables_get_dynamic",
+                                "id": "CCnNu7aN6Qy.}kzA;q|~",
+                                "fields": {
+                                  "VAR": {
+                                    "id": "BBL%iV;2e$8(U3nf4[./"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "DO0": {
+                        "block": {
+                          "type": "lumigame_led_set_color",
+                          "id": "tb+O{dda+c89~[F:TEKM",
+                          "inputs": {
+                            "POSITION": {
+                              "block": {
+                                "type": "variables_get_dynamic",
+                                "id": "(GfzHOPN$r^cjl%1,y]f",
+                                "fields": {
+                                  "VAR": {
+                                    "id": "BBL%iV;2e$8(U3nf4[./"
+                                  }
+                                }
+                              }
+                            },
+                            "COLOR": {
+                              "block": {
+                                "type": "lumigame_colour_rgb",
+                                "id": "N4sA{hD!g#UM~-mJXSdN",
+                                "inputs": {
+                                  "R": {
+                                    "block": {
+                                      "type": "math_number",
+                                      "id": "/Fo.p#^pem`odSwABA+#",
+                                      "fields": {
+                                        "NUM": 255
+                                      }
+                                    }
+                                  },
+                                  "G": {
+                                    "block": {
+                                      "type": "math_number",
+                                      "id": "bx6.Qi$y?dqfR0fa^T,`",
+                                      "fields": {
+                                        "NUM": 0
+                                      }
+                                    }
+                                  },
+                                  "B": {
+                                    "block": {
+                                      "type": "math_number",
+                                      "id": "=Z{,rgz(TIx6Vh}vtN*U",
+                                      "fields": {
+                                        "NUM": 0
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    ]
+  },
+  "variables": [
+    {
+      "name": "position",
+      "id": "BBL%iV;2e$8(U3nf4[./"
+    }
+  ],
+  "backpack": [],
+  "secondaryFile": true
+}
