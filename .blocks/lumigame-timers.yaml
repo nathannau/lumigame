@@ -53,3 +53,22 @@ implementations:
           imports:
             - "#include \"lumigame.h\""
           precedence: ATOMIC
+      - blockly:
+          type: lumigame_timer_remaining
+          message0:
+            en: time remaining on timer %1
+            fr: temps restant sur le minuteur %1
+          args0:
+            - type: field_input
+              name: NAME
+              text: timer1
+          output: Number
+          tooltip:
+            en: "Milliseconds left before the named timer expires. 0 if it has already expired or was never started."
+            fr: "Millisecondes restantes avant l'expiration du minuteur nommé. 0 s'il est déjà expiré ou n'a jamais été démarré."
+        codegen:
+          body:
+            - lumigameTimerRemaining("{{NAME}}")
+          imports:
+            - "#include \"lumigame.h\""
+          precedence: ATOMIC

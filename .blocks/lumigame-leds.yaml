@@ -73,8 +73,8 @@ implementations:
           previousStatement: null
           nextStatement: null
           tooltip:
-            en: "Scrolls the text across the LED grid, in the given colour, one column every given number of milliseconds. Call this every loop() iteration (e.g. with the same text) to keep it animating - it tracks its own position over time and loops back to the start once it has scrolled fully off-screen."
-            fr: "Fait défiler le texte sur la grille de LED, dans la couleur donnée, une colonne toutes les X millisecondes. Appelle ce bloc à chaque tour de loop() (avec le même texte) pour que le défilement continue - il garde sa position en mémoire et recommence depuis le début une fois sorti complètement de l'écran."
+            en: "Scrolls the text across the LED grid, in the given colour, one column every given number of milliseconds. Call this every loop() iteration to keep it animating - it tracks its own position over time and loops back to the start once it has scrolled fully off-screen. Leave 'text' empty (its default) once the message has already been set, to keep scrolling it without recomputing/reconnecting the text every frame - use 'stop displaying text' to actually clear it."
+            fr: "Fait défiler le texte sur la grille de LED, dans la couleur donnée, une colonne toutes les X millisecondes. Appelle ce bloc à chaque tour de loop() pour que le défilement continue - il garde sa position en mémoire et recommence depuis le début une fois sorti complètement de l'écran. Laisse « texte » vide (sa valeur par défaut) une fois le message déjà défini, pour continuer à le faire défiler sans avoir à le recalculer/rebrancher à chaque frame - utilise « interrompre l'affichage du texte » pour vraiment l'effacer."
         codegen:
           body:
             - lumigameScrollText({{TEXT}}, {{COLOR}}, {{SPEED}});
@@ -100,6 +100,22 @@ implementations:
             - lumigameStopScrollText();
           imports:
             - "#include \"lumigame.h\""
+      - blockly:
+          type: lumigame_scroll_text_finished
+          message0:
+            en: text just finished scrolling?
+            fr: le texte vient-il de finir de défiler ?
+          args0: []
+          output: Boolean
+          tooltip:
+            en: "True right after the 'display text' block's call that completed a full scroll pass (the text has gone fully off-screen). Check this immediately after 'display text', in the same loop() iteration - it reflects only the most recent call."
+            fr: "Vrai juste après l'appel du bloc « afficher le texte » qui a terminé un défilement complet (le texte est complètement sorti de l'écran). À vérifier juste après « afficher le texte », dans le même tour de loop() - ça ne reflète que l'appel le plus récent."
+        codegen:
+          body:
+            - lumigameScrollTextFinished()
+          imports:
+            - "#include \"lumigame.h\""
+          precedence: ATOMIC
       - blockly:
           type: lumigame_is_scrolling_text
           message0:

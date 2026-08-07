@@ -13,7 +13,8 @@
               "type": "lumigame_add_game",
               "id": "Is-Km3X}9YwL6p/(b?6E",
               "fields": {
-                "ID": "jeu1"
+                "ID": "jeu1",
+                "LABEL": "Jeu 1"
               }
             }
           }

@@ -31,20 +31,23 @@ implementations:
       - blockly:
           type: lumigame_add_game
           message0:
-            en: add game %1
-            fr: ajouter le jeu %1
+            en: add game %1 labelled %2
+            fr: ajouter le jeu %1 intitulé %2
           args0:
             - type: field_input
               name: ID
               text: jeu1
+            - type: field_input
+              name: LABEL
+              text: Jeu 1
           previousStatement: null
           nextStatement: null
           tooltip:
-            en: Registers a game. Its file must define <id>_start(), <id>_loop() and <id>_stop() functions (e.g. with 'to do' function blocks). <id>_loop() must return non-zero when the game is over, to return to the menu. Place inside the LumiGame configuration block.
-            fr: Enregistre un jeu. Le fichier du jeu doit définir les fonctions <id>_start(), <id>_loop() et <id>_stop() (par ex. avec des blocs de fonction "à faire"). <id>_loop() doit retourner une valeur non nulle quand la partie est terminée, pour revenir au menu. À placer dans le bloc de configuration LumiGame.
+            en: Registers a game. Its file must define <id>_start(), <id>_loop() and <id>_stop() functions (e.g. with 'to do' function blocks). <id>_loop() must return non-zero when the game is over, to return to the menu. The label is the name shown in the menu (e.g. via getGameLabel()). Place inside the LumiGame configuration block.
+            fr: Enregistre un jeu. Le fichier du jeu doit définir les fonctions <id>_start(), <id>_loop() et <id>_stop() (par ex. avec des blocs de fonction "à faire"). <id>_loop() doit retourner une valeur non nulle quand la partie est terminée, pour revenir au menu. Le libellé est le nom affiché dans le menu (via getGameLabel()). À placer dans le bloc de configuration LumiGame.
         codegen:
           body:
-            - addGame({{ID}}_start, {{ID}}_loop, {{ID}}_stop);
+            - addGame("{{LABEL}}", {{ID}}_start, {{ID}}_loop, {{ID}}_stop);
           declarations:
             - |
               extern void {{ID}}_start();
@@ -92,3 +95,16 @@ implementations:
             game_stop: |
               void {{NAME}}_stop() {
               {{STOP}}}
+      - blockly:
+          type: lumigame_quit_game
+          message0:
+            en: quit game
+            fr: quitter le jeu
+          args0: []
+          previousStatement: null
+          tooltip:
+            en: "Ends the current game immediately and returns to the menu. Place inside a game's loop block."
+            fr: "Termine immédiatement la partie en cours et revient au menu. À placer dans le bloc boucle d'un jeu."
+        codegen:
+          body:
+            - return -1;

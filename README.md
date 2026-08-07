@@ -5,7 +5,7 @@ A DIY arcade of 32 illuminated buttons, driven by an ESP32 — games are built v
 ## Hardware
 
 - **MCU**: ESP32 (DevKit V1, 38-pin)
-- **Lights**: 32 individually addressable LEDs, wired as 4 strips of 8 (FastLED), data pins GPIO16, 17, 25, 26 (GPIO18/19/23/5, the VSPI pins, are kept free for a future SPI peripheral)
+- **Lights**: 32 individually addressable LEDs, wired as 4 strips of 8 (FastLED), data pins GPIO16, 17, 27, 26 (GPIO18/19/23/5, the VSPI pins, are kept free for a future SPI peripheral)
 - **Buttons**: 32 inputs, multiplexed through two TCA9555 I²C GPIO expanders
 - **I²C**: SDA = GPIO21, SCL = GPIO22
 

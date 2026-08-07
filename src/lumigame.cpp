@@ -1,4 +1,5 @@
 #include "lumigame.h"
+#include "menu.h"
 
 TCA9555 tca1(0x20);
 TCA9555 tca2(0x21);
@@ -37,16 +38,54 @@ void lumigameDiagnostic()
   {
     setAllLeds(colours[c]);
     FastLED.show();
-    delay(DIAGNOSTIC_STEP_MS);
+    delay(DIAGNOSTIC_STEP_MS * 3);
   }
 
   setAllLeds(CRGB::Black);
   FastLED.show();
 }
 
+static uint32_t rawButtonState = 0;
+static unsigned long buttonChangedAt[NUM_BUTTONS] = {0};
+
+// Debounces the raw TCA9555 reading into `buttonState`: a bit is only
+// committed once its raw value has stayed unchanged for BUTTON_DEBOUNCE_MS,
+// timed independently per button so one bouncing button doesn't delay the
+// others.
+static void updateButtonState()
+{
+  // Buttons are wired with pull-ups: a pressed button pulls its pin LOW.
+  // Invert here, once, so 1 means "pressed" for every consumer
+  // (getButtonState(), the menu's click detection, etc.).
+  uint32_t raw = ~(((uint32_t)tca2.read16() << 16) | tca1.read16());
+  uint32_t changedBits = raw ^ rawButtonState;
+  unsigned long now = millis();
+
+  for (uint8_t i = 0; i < NUM_BUTTONS; i++)
+  {
+    if ((changedBits >> i) & 0x01)
+    {
+      buttonChangedAt[i] = now;
+    }
+  }
+  rawButtonState = raw;
+
+  for (uint8_t i = 0; i < NUM_BUTTONS; i++)
+  {
+    if (now - buttonChangedAt[i] >= BUTTON_DEBOUNCE_MS)
+    {
+      uint32_t bit = (uint32_t)1 << i;
+      if (raw & bit)
+        buttonState |= bit;
+      else
+        buttonState &= ~bit;
+    }
+  }
+}
+
 void lumigameLoop()
 {
-  buttonState = ((uint32_t)tca2.read16() << 16) | tca1.read16();
+  updateButtonState();
   if (currentGameEntry)
   {
     if (currentGameEntry->loop())
@@ -62,15 +101,37 @@ void lumigameLoop()
   FastLED.show();
 }
 
-void addGame(void (*startFn)(), uint8_t (*loopFn)(), void (*stopFn)())
+void addGame(const char *label, void (*startFn)(), uint8_t (*loopFn)(), void (*stopFn)())
 {
   if (gameCount < MAX_GAMES)
   {
+    strncpy(gameRegistry[gameCount].label, label, sizeof(gameRegistry[gameCount].label) - 1);
+    gameRegistry[gameCount].label[sizeof(gameRegistry[gameCount].label) - 1] = '\0';
     gameRegistry[gameCount].start = startFn;
     gameRegistry[gameCount].loop = loopFn;
     gameRegistry[gameCount].stop = stopFn;
     gameCount++;
   }
+}
+
+uint8_t getGameCount()
+{
+  return gameCount;
+}
+
+const char *getGameLabel(uint8_t index)
+{
+  if (index >= gameCount)
+    return "";
+  return gameRegistry[index].label;
+}
+
+void startGame(uint8_t index)
+{
+  if (index >= gameCount)
+    return;
+  currentGameEntry = &gameRegistry[index];
+  currentGameEntry->start();
 }
 
 uint32_t getButtonsState()
@@ -140,11 +201,11 @@ bool lumigamePositionInZone(uint8_t position, uint32_t zone)
 
 TimerEntry timerRegistry[MAX_TIMERS];
 
-static TimerEntry *findTimer(const String &name, bool createIfMissing)
+static TimerEntry *findTimer(const char *name, bool createIfMissing)
 {
   for (uint8_t i = 0; i < MAX_TIMERS; i++)
   {
-    if (timerRegistry[i].active && timerRegistry[i].name == name)
+    if (timerRegistry[i].active && strcmp(timerRegistry[i].name, name) == 0)
     {
       return &timerRegistry[i];
     }
@@ -156,26 +217,36 @@ static TimerEntry *findTimer(const String &name, bool createIfMissing)
     if (!timerRegistry[i].active)
     {
       timerRegistry[i].active = true;
-      timerRegistry[i].name = name;
+      strncpy(timerRegistry[i].name, name, sizeof(timerRegistry[i].name) - 1);
+      timerRegistry[i].name[sizeof(timerRegistry[i].name) - 1] = '\0';
       return &timerRegistry[i];
     }
   }
   return nullptr;
 }
 
-void lumigameTimerSet(const String &name, unsigned long ms)
+void lumigameTimerSet(const char *name, unsigned long ms)
 {
   TimerEntry *t = findTimer(name, true);
   if (t)
     t->expireAt = millis() + ms;
 }
 
-bool lumigameTimerExpired(const String &name)
+bool lumigameTimerExpired(const char *name)
 {
   TimerEntry *t = findTimer(name, false);
   if (!t)
     return true;
   return (long)(millis() - t->expireAt) >= 0;
+}
+
+unsigned long lumigameTimerRemaining(const char *name)
+{
+  TimerEntry *t = findTimer(name, false);
+  if (!t)
+    return 0;
+  long remaining = (long)(t->expireAt - millis());
+  return remaining > 0 ? (unsigned long)remaining : 0;
 }
 
 // Tiny 4-row x 3-column font, digits 0-9 then A-Z. One 4-bit value per
@@ -258,10 +329,15 @@ static bool lumigameFontPixelAt(const String &text, uint16_t col, uint8_t row)
 static String scrollActiveText;
 static uint16_t scrollOffset = 0;
 static unsigned long scrollLastStepAt = 0;
+static bool scrollJustFinished = false;
 
 bool lumigameScrollText(const String &text, CRGB color, unsigned long stepMs)
 {
-  if (text != scrollActiveText)
+  // An empty text means "keep whatever is already scrolling" - lets a
+  // caller pass "" every frame instead of recomputing/reconnecting the
+  // text expression once it has already been set. Use
+  // lumigameStopScrollText() to actually clear the display.
+  if (text.length() > 0 && text != scrollActiveText)
   {
     scrollActiveText = text;
     scrollOffset = 0;
@@ -299,7 +375,13 @@ bool lumigameScrollText(const String &text, CRGB color, unsigned long stepMs)
     }
   }
 
+  scrollJustFinished = finished;
   return finished;
+}
+
+bool lumigameScrollTextFinished()
+{
+  return scrollJustFinished;
 }
 
 void lumigameStopScrollText()
