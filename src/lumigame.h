@@ -31,6 +31,12 @@
 // accepted into buttonState (mechanical debounce).
 #define BUTTON_DEBOUNCE_MS 20
 
+// Flip which physical column scrolling text lands on (left<->right), to
+// match the real wiring - flip this if scrolling text/glyphs appear
+// mirrored on the actual hardware. Does not affect anything else (buttons,
+// setAllLeds/setLedColor, the diagnostic, ...).
+#define SCROLL_MIRROR_COLUMNS true
+
 struct GameEntry
 {
   char label[24];
@@ -75,8 +81,34 @@ void startGame(uint8_t index);
 uint32_t getButtonsState();
 bool getButtonState(uint8_t position);
 
+// True only on the one lumigameLoop() iteration where the button's
+// (debounced) state changes to pressed/released, respectively.
+bool getButtonJustPressed(uint8_t position);
+bool getButtonJustReleased(uint8_t position);
+
+// Bitmask versions of the above (bit = position), e.g. for the menu's own
+// click detection.
+uint32_t getButtonsJustPressed();
+uint32_t getButtonsJustReleased();
+
+// What lumigame_button_state's dropdown selects.
+enum ButtonStateQuery
+{
+  BUTTON_PRESSED,
+  BUTTON_RELEASED,
+  BUTTON_JUST_PRESSED,
+  BUTTON_JUST_RELEASED,
+};
+
+// Whether the button at `position` currently matches `query`.
+bool queryButtonState(uint8_t position, ButtonStateQuery query);
+
 void setAllLeds(CRGB color);
 void setLedColor(uint8_t position, CRGB color);
+
+// Scales all three channels of `color` by `brightness`/255: 0 brings every
+// channel to 0, 255 leaves the colour unchanged.
+CRGB lumigameDimColor(CRGB color, uint8_t brightness);
 
 // Adds two positions, wrapping the row and column independently so the
 // result always stays within the 4x8 grid.
@@ -93,31 +125,21 @@ uint32_t lumigameZoneMask(std::initializer_list<uint8_t> bits);
 // Whether the given position belongs to the zone.
 bool lumigamePositionInZone(uint8_t position, uint32_t zone);
 
-// Named timers, identified by a free-form name (e.g. "attack", "blink").
+// Timers, indexed 0..MAX_TIMERS-1 (see the "Minuteurs" blocks).
 #define MAX_TIMERS 16
 
-struct TimerEntry
-{
-  char name[16];
-  unsigned long expireAt;
-  bool active;
-};
+// (Re)starts timer `index` so it expires `ms` milliseconds from now. No-op
+// if `index` is out of range.
+void lumigameTimerSet(uint8_t index, unsigned long ms);
 
-extern TimerEntry timerRegistry[MAX_TIMERS];
+// True once timer `index`'s delay has elapsed. Also true if that timer was
+// never started (or `index` is out of range), so a first check can kick off
+// a "set timer, then act" cycle without a separate "has it started" test.
+bool lumigameTimerExpired(uint8_t index);
 
-// (Re)starts the named timer so it expires `ms` milliseconds from now.
-// Creates the timer on first use; silently does nothing if all MAX_TIMERS
-// slots are already taken by other names.
-void lumigameTimerSet(const char *name, unsigned long ms);
-
-// True once the named timer's delay has elapsed. Also true if that timer
-// was never started, so a first check can kick off a "set timer, then act"
-// cycle without a separate "has it started" test.
-bool lumigameTimerExpired(const char *name);
-
-// Milliseconds left before the named timer expires. 0 if it has already
-// expired or was never started.
-unsigned long lumigameTimerRemaining(const char *name);
+// Milliseconds left before timer `index` expires. 0 if it has already
+// expired, was never started, or `index` is out of range.
+unsigned long lumigameTimerRemaining(uint8_t index);
 
 // Scrolls `text` across the LED grid using a tiny 4-row bitmap font (digits
 // and A-Z; any other character, including space, renders as a blank gap).
@@ -125,11 +147,10 @@ unsigned long lumigameTimerRemaining(const char *name);
 // its own scroll position over time via millis(), so it doesn't block.
 // An empty `text` means "keep whatever is already scrolling" - pass "" once
 // the text has been set so the caller doesn't have to recompute/reconnect
-// it every frame; use lumigameStopScrollText() to actually clear it.
-// Returns true once the text has scrolled fully off-screen; the position
-// then restarts from the beginning on the next call, so a game can just
-// keep calling this every frame to loop the message, or stop once it sees
-// `true` to show it only once.
+// it every frame; use lumigameStopScrollText() to actually clear it early.
+// Returns true once the text has scrolled fully off-screen - at that point
+// it stops on its own (lumigameIsScrollingText() becomes false); call this
+// again with the actual text (not "") to play it again/loop it.
 bool lumigameScrollText(const String &text, CRGB color, unsigned long stepMs);
 
 // The return value of the most recent lumigameScrollText() call: true if
@@ -142,6 +163,6 @@ bool lumigameScrollTextFinished();
 // Stops any text currently scrolling and clears the LED grid immediately.
 void lumigameStopScrollText();
 
-// Whether lumigameScrollText() is currently displaying something (i.e. has
-// been called with non-empty text and not stopped since).
+// Whether lumigameScrollText() is still mid a scroll pass (has been called
+// with non-empty text and hasn't finished or been stopped since).
 bool lumigameIsScrollingText();

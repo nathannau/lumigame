@@ -1,13 +1,11 @@
 #include "menu.h"
 
 static uint8_t menuPreviewIndex = 0xFF; // 0xFF = no game currently previewed
-static uint32_t menuPrevButtonState = 0;
 static bool menuShowingName = false; // true while the previewed game's name is scrolling
 
 void menu_loop()
 {
-  uint32_t justPressed = buttonState & ~menuPrevButtonState;
-  menuPrevButtonState = buttonState;
+  uint32_t justPressed = getButtonsJustPressed();
 
   // Second click on the previewed game's button -> launch it.
   if (menuPreviewIndex != 0xFF && ((justPressed >> menuPreviewIndex) & 0x01))

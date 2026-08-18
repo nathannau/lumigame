@@ -47,11 +47,14 @@ void lumigameDiagnostic()
 
 static uint32_t rawButtonState = 0;
 static unsigned long buttonChangedAt[NUM_BUTTONS] = {0};
+static uint32_t buttonJustPressedMask = 0;
+static uint32_t buttonJustReleasedMask = 0;
 
 // Debounces the raw TCA9555 reading into `buttonState`: a bit is only
 // committed once its raw value has stayed unchanged for BUTTON_DEBOUNCE_MS,
 // timed independently per button so one bouncing button doesn't delay the
-// others.
+// others. Also derives the "just pressed"/"just released" edge masks from
+// the debounced state, once per frame, for every consumer to share.
 static void updateButtonState()
 {
   // Buttons are wired with pull-ups: a pressed button pulls its pin LOW.
@@ -70,6 +73,7 @@ static void updateButtonState()
   }
   rawButtonState = raw;
 
+  uint32_t previousButtonState = buttonState;
   for (uint8_t i = 0; i < NUM_BUTTONS; i++)
   {
     if (now - buttonChangedAt[i] >= BUTTON_DEBOUNCE_MS)
@@ -81,6 +85,9 @@ static void updateButtonState()
         buttonState &= ~bit;
     }
   }
+
+  buttonJustPressedMask = buttonState & ~previousButtonState;
+  buttonJustReleasedMask = previousButtonState & ~buttonState;
 }
 
 void lumigameLoop()
@@ -146,6 +153,46 @@ bool getButtonState(uint8_t position)
   return (buttonState >> position) & 0x01;
 }
 
+uint32_t getButtonsJustPressed()
+{
+  return buttonJustPressedMask;
+}
+
+uint32_t getButtonsJustReleased()
+{
+  return buttonJustReleasedMask;
+}
+
+bool getButtonJustPressed(uint8_t position)
+{
+  if (position >= NUM_BUTTONS)
+    return false;
+  return (buttonJustPressedMask >> position) & 0x01;
+}
+
+bool getButtonJustReleased(uint8_t position)
+{
+  if (position >= NUM_BUTTONS)
+    return false;
+  return (buttonJustReleasedMask >> position) & 0x01;
+}
+
+bool queryButtonState(uint8_t position, ButtonStateQuery query)
+{
+  switch (query)
+  {
+  case BUTTON_PRESSED:
+    return getButtonState(position);
+  case BUTTON_RELEASED:
+    return !getButtonState(position);
+  case BUTTON_JUST_PRESSED:
+    return getButtonJustPressed(position);
+  case BUTTON_JUST_RELEASED:
+    return getButtonJustReleased(position);
+  }
+  return false;
+}
+
 void setAllLeds(CRGB color)
 {
   for (uint8_t i = 0; i < NUM_BUTTONS; i++)
@@ -157,6 +204,11 @@ void setLedColor(uint8_t position, CRGB color)
   if (position >= NUM_BUTTONS)
     return;
   leds[position] = color;
+}
+
+CRGB lumigameDimColor(CRGB color, uint8_t brightness)
+{
+  return CRGB(color.r * brightness / 255, color.g * brightness / 255, color.b * brightness / 255);
 }
 
 uint8_t lumigamePositionAdd(uint8_t a, uint8_t b)
@@ -199,101 +251,80 @@ bool lumigamePositionInZone(uint8_t position, uint32_t zone)
   return (zone >> position) & 0x01;
 }
 
-TimerEntry timerRegistry[MAX_TIMERS];
+// expireAt == 0 (the static-init default) reads as already-expired via the
+// same millis() comparison used once a timer is actually set — so an unset
+// timer needs no separate "active" flag to report "expired" by default.
+static unsigned long timerExpireAt[MAX_TIMERS];
 
-static TimerEntry *findTimer(const char *name, bool createIfMissing)
+void lumigameTimerSet(uint8_t index, unsigned long ms)
 {
-  for (uint8_t i = 0; i < MAX_TIMERS; i++)
-  {
-    if (timerRegistry[i].active && strcmp(timerRegistry[i].name, name) == 0)
-    {
-      return &timerRegistry[i];
-    }
-  }
-  if (!createIfMissing)
-    return nullptr;
-  for (uint8_t i = 0; i < MAX_TIMERS; i++)
-  {
-    if (!timerRegistry[i].active)
-    {
-      timerRegistry[i].active = true;
-      strncpy(timerRegistry[i].name, name, sizeof(timerRegistry[i].name) - 1);
-      timerRegistry[i].name[sizeof(timerRegistry[i].name) - 1] = '\0';
-      return &timerRegistry[i];
-    }
-  }
-  return nullptr;
+  if (index < MAX_TIMERS)
+    timerExpireAt[index] = millis() + ms;
 }
 
-void lumigameTimerSet(const char *name, unsigned long ms)
+bool lumigameTimerExpired(uint8_t index)
 {
-  TimerEntry *t = findTimer(name, true);
-  if (t)
-    t->expireAt = millis() + ms;
-}
-
-bool lumigameTimerExpired(const char *name)
-{
-  TimerEntry *t = findTimer(name, false);
-  if (!t)
+  if (index >= MAX_TIMERS)
     return true;
-  return (long)(millis() - t->expireAt) >= 0;
+  return (long)(millis() - timerExpireAt[index]) >= 0;
 }
 
-unsigned long lumigameTimerRemaining(const char *name)
+unsigned long lumigameTimerRemaining(uint8_t index)
 {
-  TimerEntry *t = findTimer(name, false);
-  if (!t)
+  if (index >= MAX_TIMERS)
     return 0;
-  long remaining = (long)(t->expireAt - millis());
+  long remaining = (long)(timerExpireAt[index] - millis());
   return remaining > 0 ? (unsigned long)remaining : 0;
 }
 
-// Tiny 4-row x 3-column font, digits 0-9 then A-Z. One 4-bit value per
-// column, written so the binary literal reads top-to-bottom for easy
-// editing: bit 3 = row 0 (top) ... bit 0 = row 3 (bottom).
-// Digits 1-6 are confirmed exact; 7/8/9/0 and all letters are placeholders
-// to be corrected by hand.
-#define FONT_GLYPH_WIDTH 3
+// Tiny 4x5 font (4 physical rows wide, 5 steps "tall"), digits 0-9 then A-Z.
+// The display only has 4 physical rows, so glyphs are authored rotated 90°:
+// each glyph is drawn like a normal small font (5 rows top-to-bottom, 4
+// columns left-to-right, '#'=1/'.'=0 converted straight to a binary
+// literal), then scrolled through the 8 physical columns exactly like the
+// old 4x3 font was - only the per-character step count changed (3 -> 5),
+// giving each letter much more shape detail. Bit order per row: leftmost
+// character = physical row 0, rightmost = physical row 3.
+#define FONT_GLYPH_HEIGHT 5
 #define FONT_CHAR_SPACING 1
 
-static const uint8_t FONT_GLYPHS[36][FONT_GLYPH_WIDTH] = {
-    /* 0 */ {0b1111, 0b1001, 0b1111},
-    /* 1 */ {0b0101, 0b1111, 0b0001},
-    /* 2 */ {0b1011, 0b1010, 0b1110},
-    /* 3 */ {0b1001, 0b1011, 0b1111},
-    /* 4 */ {0b0110, 0b1011, 0b0010},
-    /* 5 */ {0b1110, 0b1010, 0b1011},
-    /* 6 */ {0b1111, 0b1011, 0b1011},
-    /* 7 */ {0b1000, 0b1010, 0b1111},
-    /* 8 */ {0b1111, 0b1011, 0b1111},
-    /* 9 */ {0b1101, 0b1101, 0b1111},
-    /* A */ {0b0111, 0b1010, 0b0111},
-    /* B */ {0b1111, 0b1011, 0b0111},
-    /* C */ {0b1111, 0b1001, 0b1001},
-    /* D */ {0b1111, 0b1001, 0b0110},
-    /* E */ {0b1111, 0b1011, 0b1001},
-    /* F */ {0b1111, 0b1010, 0b1000},
-    /* G */ {0b1111, 0b1001, 0b1011},
-    /* H */ {0b1111, 0b0010, 0b1111},
-    /* I */ {0b1001, 0b1111, 0b1001},
-    /* J */ {0b1001, 0b1111, 0b1000},
-    /* K */ {0b1111, 0b0010, 0b1101},
-    /* L */ {0b1111, 0b0001, 0b0001},
-    /* M */ {0b1111, 0b0100, 0b1111},
-    /* N */ {0b1111, 0b0110, 0b1111},
-    /* O */ {0b0110, 0b1001, 0b0110},
-    /* P */ {0b1111, 0b1010, 0b0100},
-    /* Q */ {0b0110, 0b1001, 0b0111},
-    /* R */ {0b1111, 0b1010, 0b0101},
-    /* S */ {0b1101, 0b1011, 0b1011},
-    /* T */ {0b1000, 0b1111, 0b1000},
-    /* U */ {0b1111, 0b0001, 0b1111},
-    /* V */ {0b1110, 0b0001, 0b1110},
-    /* W */ {0b1110, 0b0111, 0b1110},
-    /* X */ {0b1001, 0b0110, 0b1001},
-    /* Y */ {0b1100, 0b0011, 0b1100},
-    /* Z */ {0b1011, 0b1111, 0b1101},
+static const uint8_t FONT_GLYPHS[36][FONT_GLYPH_HEIGHT] = {
+    /* 0 */ {0b0110, 0b1001, 0b1001, 0b1001, 0b0110},
+    /* 1 */ {0b0010, 0b0110, 0b0010, 0b0010, 0b0111},
+    /* 2 */ {0b0110, 0b1001, 0b0010, 0b0100, 0b1111},
+    /* 3 */ {0b0110, 0b0001, 0b0110, 0b0001, 0b0110},
+    /* 4 */ {0b0010, 0b0110, 0b1010, 0b1111, 0b0010},
+    /* 5 */ {0b1111, 0b1000, 0b1110, 0b0001, 0b1110},
+    /* 6 */ {0b0110, 0b1000, 0b1110, 0b1001, 0b0110},
+    /* 7 */ {0b1111, 0b0001, 0b0010, 0b0100, 0b0100},
+    /* 8 */ {0b0110, 0b1001, 0b0110, 0b1001, 0b0110},
+    /* 9 */ {0b0110, 0b1001, 0b0111, 0b0001, 0b0110},
+    /* A */ {0b0110, 0b1001, 0b1111, 0b1001, 0b1001},
+    /* B */ {0b1110, 0b1001, 0b1110, 0b1001, 0b1110},
+    /* C */ {0b0110, 0b1001, 0b1000, 0b1001, 0b0110},
+    /* D */ {0b1110, 0b1001, 0b1001, 0b1001, 0b1110},
+    /* E */ {0b1111, 0b1000, 0b1110, 0b1000, 0b1111},
+    /* F */ {0b1111, 0b1000, 0b1110, 0b1000, 0b1000},
+    /* G */ {0b0110, 0b1000, 0b1011, 0b1001, 0b0110},
+    /* H */ {0b1001, 0b1001, 0b1111, 0b1001, 0b1001},
+    /* I */ {0b1110, 0b0100, 0b0100, 0b0100, 0b1110},
+    /* J */ {0b0011, 0b0001, 0b0001, 0b1001, 0b0110},
+    /* K */ {0b1001, 0b1010, 0b1100, 0b1010, 0b1001},
+    /* L */ {0b1000, 0b1000, 0b1000, 0b1000, 0b1111},
+    /* M */ {0b1001, 0b1111, 0b1001, 0b1001, 0b1001},
+    /* N */ {0b1001, 0b1101, 0b1011, 0b1001, 0b1001},
+    /* O */ {0b0110, 0b1001, 0b1001, 0b1001, 0b0110},
+    /* P */ {0b1110, 0b1001, 0b1110, 0b1000, 0b1000},
+    /* Q */ {0b0110, 0b1001, 0b1001, 0b0110, 0b0001},
+    /* R */ {0b1110, 0b1001, 0b1110, 0b1010, 0b1001},
+    /* S */ {0b0111, 0b1000, 0b0110, 0b0001, 0b1110},
+    /* T */ {0b1111, 0b0100, 0b0100, 0b0100, 0b0100},
+    /* U */ {0b1001, 0b1001, 0b1001, 0b1001, 0b0110},
+    /* V */ {0b1001, 0b1001, 0b1001, 0b0110, 0b0110},
+    /* W */ {0b1001, 0b1001, 0b1111, 0b1111, 0b1001},
+    /* X */ {0b1001, 0b0110, 0b0110, 0b0110, 0b1001},
+    /* Y */ {0b1001, 0b1001, 0b0110, 0b0100, 0b0100},
+    /* Z */ {0b1111, 0b0001, 0b0110, 0b1000, 0b1111},
 };
 
 // Returns nullptr for unsupported characters (including space), which the
@@ -311,14 +342,14 @@ static const uint8_t *lumigameFontGlyph(char c)
 
 // Whether the pixel at (absolute text column, row) is lit. `col` runs from
 // 0 (first column of the first character) across the whole string, made up
-// of FONT_GLYPH_WIDTH glyph columns plus FONT_CHAR_SPACING blank columns
-// per character.
+// of FONT_GLYPH_HEIGHT glyph steps plus FONT_CHAR_SPACING blank steps per
+// character.
 static bool lumigameFontPixelAt(const String &text, uint16_t col, uint8_t row)
 {
-  const uint16_t charAdvance = FONT_GLYPH_WIDTH + FONT_CHAR_SPACING;
+  const uint16_t charAdvance = FONT_GLYPH_HEIGHT + FONT_CHAR_SPACING;
   uint16_t charIndex = col / charAdvance;
   uint16_t colInChar = col % charAdvance;
-  if (charIndex >= text.length() || colInChar >= FONT_GLYPH_WIDTH)
+  if (charIndex >= text.length() || colInChar >= FONT_GLYPH_HEIGHT)
     return false;
   const uint8_t *glyph = lumigameFontGlyph(text[charIndex]);
   if (!glyph)
@@ -344,7 +375,7 @@ bool lumigameScrollText(const String &text, CRGB color, unsigned long stepMs)
     scrollLastStepAt = millis();
   }
 
-  const uint16_t charAdvance = FONT_GLYPH_WIDTH + FONT_CHAR_SPACING;
+  const uint16_t charAdvance = FONT_GLYPH_HEIGHT + FONT_CHAR_SPACING;
   uint16_t textWidth = scrollActiveText.length() * charAdvance;
   uint16_t totalSteps = textWidth + NUM_COLS;
 
@@ -357,6 +388,11 @@ bool lumigameScrollText(const String &text, CRGB color, unsigned long stepMs)
     {
       scrollOffset = 0;
       finished = true;
+      // Stop here rather than silently looping forever: lumigameIsScrollingText()
+      // should reflect "still mid a pass", not "would resume if called again".
+      // A caller that wants to keep looping just calls this again with the
+      // text (or "") on the next frame, which restarts it fresh.
+      scrollActiveText = "";
     }
   }
 
@@ -366,11 +402,12 @@ bool lumigameScrollText(const String &text, CRGB color, unsigned long stepMs)
     int32_t textCol = (int32_t)dc + scrollOffset - NUM_COLS;
     if (textCol < 0 || textCol >= (int32_t)textWidth)
       continue;
+    uint8_t physCol = SCROLL_MIRROR_COLUMNS ? (NUM_COLS - 1 - dc) : dc;
     for (uint8_t row = 0; row < NUM_ROWS; row++)
     {
       if (lumigameFontPixelAt(scrollActiveText, (uint16_t)textCol, row))
       {
-        setLedColor(row * NUM_COLS + dc, color);
+        setLedColor(row * NUM_COLS + physCol, color);
       }
     }
   }

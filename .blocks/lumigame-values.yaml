@@ -185,8 +185,9 @@ implementations:
             en: valid if %1
             fr: valide si %1
           args1:
-            - type: input_statement
+            - type: input_value
               name: VALID
+              check: Boolean
           message2:
             en: if found %1
             fr: si trouvée %1
@@ -202,8 +203,8 @@ implementations:
           previousStatement: null
           nextStatement: null
           tooltip:
-            en: Tries every button position in random order, exposing each candidate as a variable. 'valid if' decides whether to keep it - it's valid by default, unless a 'return' block inside sets it to false (e.g. to require an unlit LED). The first valid candidate runs 'if found'; if none of the 32 positions are valid, 'if none found' runs instead.
-            fr: Essaie toutes les positions de bouton dans un ordre aléatoire, en exposant chaque candidate via une variable. « valide si » décide si elle est retenue - elle est valide par défaut, sauf si un bloc « retourner » à l'intérieur la met à false (par ex. pour exiger une LED éteinte). La première position valide déclenche « si trouvée » ; si aucune des 32 positions n'est valide, c'est « si aucune trouvée » qui s'exécute.
+            en: Tries every button position in random order, exposing each candidate as a variable. 'valid if' is a boolean expression that decides whether to keep it (true by default if left empty). The first valid candidate runs 'if found'; if none of the 32 positions are valid, 'if none found' runs instead.
+            fr: Essaie toutes les positions de bouton dans un ordre aléatoire, en exposant chaque candidate via une variable. « valide si » est une expression booléenne qui décide si elle est retenue (vrai par défaut si laissé vide). La première position valide déclenche « si trouvée » ; si aucune des 32 positions n'est valide, c'est « si aucune trouvée » qui s'exécute.
         codegen:
           body:
             - |
@@ -213,9 +214,7 @@ implementations:
                 bool found = false;
                 for (uint8_t idx = 0; idx < NUM_BUTTONS && !found; idx++) {
                   uint8_t {{VAR}} = candidates[idx];
-                  bool valid = [&]() -> bool {
-              {{VALID}}      return true;
-                  }();
+                  bool valid = ({{VALID}});
                   if (valid) {
                     found = true;
               {{FOUND}}    }
@@ -225,6 +224,8 @@ implementations:
               }
           imports:
             - "#include \"lumigame.h\""
+          inputDefaults:
+            VALID: "true"
       - blockly:
           type: lumigame_colour_rgb
           message0:
@@ -285,6 +286,31 @@ implementations:
             H: "0"
             S: "255"
             V: "255"
+      - blockly:
+          type: lumigame_colour_dim
+          message0:
+            en: dim %1 to brightness %2
+            fr: diminuer la luminosité de %1 à %2
+          args0:
+            - type: input_value
+              name: COLOR
+              check: Colour
+            - type: input_value
+              name: BRIGHTNESS
+              check: Number
+          output: Colour
+          inputsInline: true
+          tooltip:
+            en: Scales the colour's three channels by the given brightness (0-255) - 0 turns it fully off, 255 leaves it unchanged.
+            fr: Réduit les trois canaux de la couleur selon la luminosité donnée (0-255) - 0 l'éteint complètement, 255 la laisse inchangée.
+        codegen:
+          body:
+            - lumigameDimColor({{COLOR}}, {{BRIGHTNESS}})
+          imports:
+            - "#include \"lumigame.h\""
+          precedence: ATOMIC
+          inputDefaults:
+            BRIGHTNESS: "255"
       - blockly:
           type: lumigame_colour_named
           message0:

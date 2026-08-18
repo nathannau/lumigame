@@ -4,8 +4,8 @@ author: Nathan
 version: "1"
 category: LumiGame::Minuteurs
 description:
-  en: Named countdown timers for the LumiGame console.
-  fr: Minuteurs nommés pour la console LumiGame.
+  en: Countdown timers for the LumiGame console, indexed 0-15.
+  fr: Minuteurs pour la console LumiGame, indexés de 0 à 15.
 implementations:
   - runtime: arduino:cpp
     blocks:
@@ -15,9 +15,9 @@ implementations:
             en: start timer %1 for %2 ms
             fr: démarrer le minuteur %1 pendant %2 ms
           args0:
-            - type: field_input
-              name: NAME
-              text: timer1
+            - type: input_value
+              name: INDEX
+              check: Number
             - type: input_value
               name: MS
               check: Number
@@ -25,14 +25,15 @@ implementations:
           previousStatement: null
           nextStatement: null
           tooltip:
-            en: "(Re)starts the named timer so it expires the given number of milliseconds from now. Timers are identified by name, so several independent timers can run at once."
-            fr: "(Re)démarre le minuteur nommé pour qu'il expire dans le nombre de millisecondes donné. Les minuteurs sont identifiés par leur nom, donc plusieurs minuteurs indépendants peuvent tourner en même temps."
+            en: "(Re)starts timer INDEX (0-15) so it expires the given number of milliseconds from now. Each index runs independently, so several timers can be active at once."
+            fr: "(Re)démarre le minuteur INDEX (0-15) pour qu'il expire dans le nombre de millisecondes donné. Chaque index tourne indépendamment, donc plusieurs minuteurs peuvent être actifs en même temps."
         codegen:
           body:
-            - lumigameTimerSet("{{NAME}}", {{MS}});
+            - lumigameTimerSet({{INDEX}}, {{MS}});
           imports:
             - "#include \"lumigame.h\""
           inputDefaults:
+            INDEX: "0"
             MS: "1000"
       - blockly:
           type: lumigame_timer_expired
@@ -40,18 +41,20 @@ implementations:
             en: timer %1 expired?
             fr: le minuteur %1 est-il expiré ?
           args0:
-            - type: field_input
-              name: NAME
-              text: timer1
+            - type: input_value
+              name: INDEX
+              check: Number
           output: Boolean
           tooltip:
-            en: "Whether the named timer's delay has elapsed. Also true if that timer was never started, so a first check can kick off a 'set timer, then act' cycle on its own."
-            fr: "Indique si le délai du minuteur nommé est écoulé. Vrai aussi si ce minuteur n'a jamais été démarré, pour qu'un premier test puisse lancer tout seul un cycle « démarrer le minuteur, puis agir »."
+            en: "Whether timer INDEX's (0-15) delay has elapsed. Also true if that timer was never started, so a first check can kick off a 'set timer, then act' cycle on its own."
+            fr: "Indique si le délai du minuteur INDEX (0-15) est écoulé. Vrai aussi si ce minuteur n'a jamais été démarré, pour qu'un premier test puisse lancer tout seul un cycle « démarrer le minuteur, puis agir »."
         codegen:
           body:
-            - lumigameTimerExpired("{{NAME}}")
+            - lumigameTimerExpired({{INDEX}})
           imports:
             - "#include \"lumigame.h\""
+          inputDefaults:
+            INDEX: "0"
           precedence: ATOMIC
       - blockly:
           type: lumigame_timer_remaining
@@ -59,16 +62,18 @@ implementations:
             en: time remaining on timer %1
             fr: temps restant sur le minuteur %1
           args0:
-            - type: field_input
-              name: NAME
-              text: timer1
+            - type: input_value
+              name: INDEX
+              check: Number
           output: Number
           tooltip:
-            en: "Milliseconds left before the named timer expires. 0 if it has already expired or was never started."
-            fr: "Millisecondes restantes avant l'expiration du minuteur nommé. 0 s'il est déjà expiré ou n'a jamais été démarré."
+            en: "Milliseconds left before timer INDEX (0-15) expires. 0 if it has already expired or was never started."
+            fr: "Millisecondes restantes avant l'expiration du minuteur INDEX (0-15). 0 s'il est déjà expiré ou n'a jamais été démarré."
         codegen:
           body:
-            - lumigameTimerRemaining("{{NAME}}")
+            - lumigameTimerRemaining({{INDEX}})
           imports:
             - "#include \"lumigame.h\""
+          inputDefaults:
+            INDEX: "0"
           precedence: ATOMIC

@@ -73,8 +73,8 @@ implementations:
           previousStatement: null
           nextStatement: null
           tooltip:
-            en: "Scrolls the text across the LED grid, in the given colour, one column every given number of milliseconds. Call this every loop() iteration to keep it animating - it tracks its own position over time and loops back to the start once it has scrolled fully off-screen. Leave 'text' empty (its default) once the message has already been set, to keep scrolling it without recomputing/reconnecting the text every frame - use 'stop displaying text' to actually clear it."
-            fr: "Fait défiler le texte sur la grille de LED, dans la couleur donnée, une colonne toutes les X millisecondes. Appelle ce bloc à chaque tour de loop() pour que le défilement continue - il garde sa position en mémoire et recommence depuis le début une fois sorti complètement de l'écran. Laisse « texte » vide (sa valeur par défaut) une fois le message déjà défini, pour continuer à le faire défiler sans avoir à le recalculer/rebrancher à chaque frame - utilise « interrompre l'affichage du texte » pour vraiment l'effacer."
+            en: "Scrolls the text across the LED grid, in the given colour, one column every given number of milliseconds. Call this every loop() iteration to keep it animating - it tracks its own position over time and stops on its own once it has scrolled fully off-screen ('text is displaying?' becomes false). Leave 'text' empty (its default) once the message has already been set, to keep scrolling it without recomputing/reconnecting the text every frame; pass the actual text again to play it once more."
+            fr: "Fait défiler le texte sur la grille de LED, dans la couleur donnée, une colonne toutes les X millisecondes. Appelle ce bloc à chaque tour de loop() pour que le défilement continue - il garde sa position en mémoire et s'arrête tout seul une fois sorti complètement de l'écran (« un texte est-il en cours d'affichage ? » devient faux). Laisse « texte » vide (sa valeur par défaut) une fois le message déjà défini, pour continuer à le faire défiler sans avoir à le recalculer/rebrancher à chaque frame ; repasse le texte pour le rejouer."
         codegen:
           body:
             - lumigameScrollText({{TEXT}}, {{COLOR}}, {{SPEED}});
@@ -124,8 +124,8 @@ implementations:
           args0: []
           output: Boolean
           tooltip:
-            en: "Whether a text is currently being displayed/scrolled on the LED grid."
-            fr: "Indique si un texte est actuellement affiché/en train de défiler sur la grille de LED."
+            en: "Whether a text is still mid a scroll pass (false once it has scrolled fully off-screen, or after 'stop displaying text')."
+            fr: "Indique si un texte est encore en train de défiler (faux une fois complètement sorti de l'écran, ou après « interrompre l'affichage du texte »)."
         codegen:
           body:
             - lumigameIsScrollingText()

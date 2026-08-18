@@ -39,16 +39,18 @@ implementations:
             - type: field_dropdown
               name: STATE
               options:
-                - ["appuyé", "true"]
-                - ["relâché", "false"]
+                - ["appuyé", "BUTTON_PRESSED"]
+                - ["relâché", "BUTTON_RELEASED"]
+                - ["vient d'être appuyé", "BUTTON_JUST_PRESSED"]
+                - ["vient d'être relâché", "BUTTON_JUST_RELEASED"]
           output: Boolean
           inputsInline: true
           tooltip:
-            en: Whether the button at the given position is currently in the selected state (pressed/released).
-            fr: Indique si le bouton à la position donnée est actuellement dans l'état choisi (appuyé/relâché).
+            en: Whether the button at the given position matches the selected state - a continuous level (pressed/released) or a one-frame change event (just pressed/just released).
+            fr: Indique si le bouton à la position donnée correspond à l'état choisi - un niveau continu (appuyé/relâché) ou un évènement de changement d'une seule frame (vient d'être appuyé/relâché).
         codegen:
           body:
-            - (getButtonState({{POSITION}}) == {{STATE}})
+            - queryButtonState({{POSITION}}, {{STATE}})
           imports:
             - "#include \"lumigame.h\""
           precedence: ATOMIC

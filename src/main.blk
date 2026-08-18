@@ -13,8 +13,18 @@
               "type": "lumigame_add_game",
               "id": "Is-Km3X}9YwL6p/(b?6E",
               "fields": {
-                "ID": "jeu1",
-                "LABEL": "Jeu 1"
+                "ID": "jeu_vite_vite",
+                "LABEL": "Vite vite"
+              },
+              "next": {
+                "block": {
+                  "type": "lumigame_add_game",
+                  "id": "Ahd8m*_l#5PaxuTn+wDI",
+                  "fields": {
+                    "ID": "jeu_duel",
+                    "LABEL": "Duel"
+                  }
+                }
               }
             }
           }
